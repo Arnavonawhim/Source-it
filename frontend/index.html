@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rashtra Kavach — National Resource Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080808;--s1:#0D0D0D;--s2:#111111;--s3:#161616;
+  --border:#1C1C1C;--border2:#252525;
+  --p1:#C5D1EB;--p2:#92AFD7;--p3:#5A7684;
+  --sidebar:210px;--topbar:52px;
+}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--p1);font-size:13px;overflow:hidden}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.layout{display:flex;height:100vh}
+
+/* SIDEBAR */
+.sidebar{width:var(--sidebar);flex-shrink:0;background:var(--s1);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:10}
+.logo-area{padding:18px 18px 15px;border-bottom:1px solid var(--border)}
+.logo-mark{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:3.5px;color:var(--p2);font-weight:500;text-transform:uppercase}
+.logo-sub{font-size:9px;color:var(--p3);letter-spacing:1.5px;text-transform:uppercase;margin-top:5px}
+.nav{padding:6px 0;flex:1;overflow-y:auto}
+.nav-section{padding:13px 18px 4px;font-size:9px;color:var(--p3);letter-spacing:2px;text-transform:uppercase;font-weight:500}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 18px;cursor:pointer;color:var(--p3);font-size:12px;font-weight:400;transition:all .12s;border-left:1.5px solid transparent;user-select:none}
+.nav-item:hover{color:var(--p2);background:rgba(146,175,215,.03)}
+.nav-item.active{color:var(--p1);border-left-color:var(--p2);background:rgba(146,175,215,.05)}
+.nav-dash{width:11px;height:1px;background:currentColor;flex-shrink:0;opacity:.6}
+.nav-badge{margin-left:auto;font-family:'DM Mono',monospace;font-size:9px;background:rgba(197,209,235,.07);color:var(--p2);padding:1px 5px;border-radius:1px;border:1px solid rgba(146,175,215,.18)}
+.sidebar-foot{padding:11px 18px;border-top:1px solid var(--border);font-size:9px;color:var(--p3);letter-spacing:.4px;display:flex;align-items:center;gap:7px}
+.live-ring{width:7px;height:7px;border-radius:50%;border:1.5px solid var(--p2);position:relative;flex-shrink:0}
+.live-ring::after{content:'';position:absolute;inset:1px;border-radius:50%;background:var(--p2);animation:livep 2.8s infinite}
+@keyframes livep{0%,100%{opacity:1}50%{opacity:.15}}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{height:var(--topbar);flex-shrink:0;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 22px;gap:12px;background:var(--s1)}
+.topbar-title{font-size:11px;color:var(--p3);letter-spacing:.3px;flex:1}
+.topbar-title strong{color:var(--p2);font-weight:500}
+.crisis-tag{display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:2px;font-family:'DM Mono',monospace;font-size:9px;font-weight:500;letter-spacing:2px;text-transform:uppercase;border:1px solid rgba(197,209,235,.15);background:rgba(197,209,235,.04);color:var(--p1)}
+.crisis-dot{width:5px;height:5px;border-radius:50%;background:var(--p1);animation:livep 1.6s infinite}
+.topbar-date{font-size:9px;color:var(--p3);font-family:'DM Mono',monospace}
+.btn-gov{padding:5px 12px;border:1px solid var(--border2);background:transparent;color:var(--p3);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;cursor:pointer;border-radius:2px;transition:all .14s;white-space:nowrap}
+.btn-gov:hover{border-color:var(--p2);color:var(--p2)}
+.btn-gov.on{background:rgba(146,175,215,.08);border-color:var(--p2);color:var(--p2)}
+.content{flex:1;overflow-y:auto;padding:20px 22px}
+.page{display:none}
+.page.active{display:block}
+
+/* HEADERS */
+.ph{margin-bottom:18px}
+.ph-title{font-size:15px;font-weight:600;letter-spacing:-.2px;color:var(--p1)}
+.ph-sub{font-size:11px;color:var(--p3);margin-top:3px}
+
+/* KPI */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:10px}
+.kpi{background:var(--s2);border:1px solid var(--border);border-radius:3px;padding:14px 15px}
+.kpi-label{font-size:9px;color:var(--p3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px}
+.kpi-num{font-family:'DM Mono',monospace;font-size:26px;font-weight:400;line-height:1;color:var(--p1)}
+.kpi-num.d2{color:var(--p2)}
+.kpi-num.d3{color:var(--p3)}
+.kpi-sub{font-size:10px;color:var(--p3);margin-top:5px}
+.kpi-delta{display:inline-flex;align-items:center;font-family:'DM Mono',monospace;font-size:8px;font-weight:500;padding:1px 4px;border-radius:1px;margin-left:5px;vertical-align:middle;background:rgba(90,118,132,.1);color:var(--p3)}
+
+/* CARD */
+.card{background:var(--s2);border:1px solid var(--border);border-radius:3px;padding:16px;margin-bottom:10px}
+.card-head{font-size:9px;text-transform:uppercase;letter-spacing:1.8px;color:var(--p3);font-weight:500;margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.chr{flex:1;height:1px;background:var(--border)}
+
+/* GRIDS */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px}
+
+/* CHARTS */
+.ch{position:relative;height:168px}
+.ch-tall{position:relative;height:255px}
+
+/* STATE GRID — data table, not colored boxes */
+.state-grid{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--border);border-radius:3px;overflow:hidden}
+.sg-cell{padding:9px 12px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s}
+.sg-cell:hover{background:rgba(146,175,215,.025)}
+.sg-cell:nth-child(4n){border-right:none}
+.sg-name{font-size:9px;color:var(--p2);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:3px}
+.sg-row{display:flex;align-items:center;gap:5px}
+.sg-val{font-family:'DM Mono',monospace;font-size:11px}
+.sg-bar{height:2px;background:var(--border);margin-top:5px;border-radius:1px;overflow:hidden}
+.sg-fill{height:100%;border-radius:1px}
+
+/* ALERTS */
+.al{display:flex;gap:11px;padding:10px 0;border-bottom:1px solid var(--border)}
+.al:last-child{border-bottom:none}
+.al-time{font-family:'DM Mono',monospace;font-size:9px;color:var(--p3);flex-shrink:0;padding-top:2px;width:32px}
+.al-line{width:1px;background:var(--border2);flex-shrink:0;margin:3px 0}
+.al-body{flex:1;min-width:0}
+.al-head{font-size:11px;font-weight:600;color:var(--p1);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.al-tag{font-size:8px;padding:1px 5px;border-radius:1px;font-family:'DM Mono',monospace;letter-spacing:.6px;text-transform:uppercase;border:1px solid}
+.tc{color:var(--p1);border-color:rgba(197,209,235,.28);background:rgba(197,209,235,.05)}
+.tw{color:var(--p2);border-color:rgba(146,175,215,.26);background:rgba(146,175,215,.05)}
+.tr{color:var(--p3);border-color:rgba(90,118,132,.28);background:rgba(90,118,132,.05)}
+.al-msg{font-size:10px;color:var(--p3);margin-top:3px;line-height:1.6}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead th{text-align:left;padding:6px 10px;font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--p3);font-weight:500;border-bottom:1px solid var(--border);cursor:pointer;white-space:nowrap;user-select:none}
+thead th:hover{color:var(--p2)}
+tbody tr{border-bottom:1px solid rgba(28,28,28,.7);transition:background .1s}
+tbody tr:hover{background:rgba(146,175,215,.02)}
+tbody td{padding:8px 10px;font-size:11px;color:var(--p3);white-space:nowrap}
+.td-s{font-weight:500;color:var(--p1)}
+.td-m{font-family:'DM Mono',monospace;font-size:10px}
+.td-tag{font-size:8px;padding:2px 5px;border-radius:1px;font-family:'DM Mono',monospace;letter-spacing:.8px;border:1px solid var(--border2);color:var(--p3);text-transform:uppercase;display:inline-block}
+.barcell{width:80px;height:3px;background:var(--border);border-radius:1px;overflow:hidden;display:inline-block;vertical-align:middle}
+.barfill{height:100%;border-radius:1px}
+
+/* FILTER */
+.fb{display:flex;gap:6px;margin-bottom:14px;align-items:center;flex-wrap:wrap}
+.fb-lbl{font-size:9px;color:var(--p3);letter-spacing:1.2px;text-transform:uppercase;margin-right:2px}
+.fb-btn{padding:3px 9px;border:1px solid var(--border);border-radius:2px;background:transparent;color:var(--p3);font-family:'DM Sans',sans-serif;font-size:10px;cursor:pointer;transition:all .12s}
+.fb-btn.on,.fb-btn:hover{border-color:var(--p2);color:var(--p2);background:rgba(146,175,215,.04)}
+
+/* RES TABS */
+.rt{display:flex;margin-bottom:15px;border-bottom:1px solid var(--border)}
+.rt-tab{padding:7px 14px;font-size:11px;font-weight:500;color:var(--p3);cursor:pointer;border-bottom:1.5px solid transparent;margin-bottom:-1px;transition:all .12s}
+.rt-tab:hover{color:var(--p2)}
+.rt-tab.on{color:var(--p1);border-bottom-color:var(--p2)}
+
+/* FIND RESOURCES */
+.loc-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:0}
+.loc-btn{padding:7px 8px;border:1px solid var(--border);border-radius:2px;background:transparent;cursor:pointer;text-align:left;transition:all .12s}
+.loc-btn:hover{border-color:var(--p3)}
+.loc-btn.sel{border-color:var(--p2);background:rgba(146,175,215,.05)}
+.loc-btn-name{font-size:9px;font-weight:600;color:var(--p2)}
+.loc-btn-st{font-size:8px;color:var(--p3);margin-top:1px;font-family:'DM Mono',monospace}
+
+.dp-item{padding:9px 0;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.dp-item:last-child{border-bottom:none}
+.dp-name{font-size:10px;color:var(--p2);font-weight:500}
+.dp-addr{font-size:9px;color:var(--p3);margin-top:2px;line-height:1.5}
+.dp-avail{font-size:8px;font-family:'DM Mono',monospace;padding:2px 5px;border-radius:1px;white-space:nowrap;flex-shrink:0;margin-top:1px;border:1px solid}
+.avail-yes{color:var(--p2);border-color:rgba(146,175,215,.25);background:rgba(146,175,215,.07)}
+.avail-low{color:var(--p1);border-color:rgba(197,209,235,.2);background:rgba(197,209,235,.05)}
+.avail-no{color:var(--p3);border-color:rgba(90,118,132,.22);background:rgba(90,118,132,.05)}
+
+.plan-step{display:flex;align-items:flex-start;gap:12px;padding:12px 13px;background:var(--s3);border:1px solid var(--border);border-radius:2px;margin-bottom:7px}
+.plan-num{font-family:'DM Mono',monospace;font-size:10px;color:var(--p3);flex-shrink:0;padding-top:1px;width:18px;text-align:right}
+.plan-title{font-size:11px;font-weight:600;color:var(--p1);margin-bottom:3px}
+.plan-text{font-size:10px;color:var(--p3);line-height:1.7}
+
+.tip-block{padding:11px 13px;border-left:1.5px solid var(--p3);background:rgba(90,118,132,.04);margin-bottom:7px}
+.tip-res-lbl{font-size:8px;font-family:'DM Mono',monospace;color:var(--p3);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:4px}
+.tip-text{font-size:10px;color:var(--p2);line-height:1.7}
+.tip-text.hi{color:var(--p1)}
+
+.helpline-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.hl{padding:10px 12px;background:var(--s3);border:1px solid var(--border);border-radius:3px}
+.hl-lbl{font-size:8px;color:var(--p3);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}
+.hl-num{font-family:'DM Mono',monospace;font-size:13px;color:var(--p1)}
+.hl-sub{font-size:8px;color:var(--p3);margin-top:2px}
+
+/* GOV */
+.locked-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:72px 20px;text-align:center}
+.lock-icon{width:38px;height:33px;border:1.5px solid var(--border2);border-radius:5px;position:relative;margin:0 auto 20px}
+.lock-icon::before{content:'';position:absolute;width:17px;height:13px;border:1.5px solid var(--border2);border-radius:9px 9px 0 0;top:-13px;left:9px;border-bottom:none}
+.locked-t{font-size:14px;font-weight:600;color:var(--p2);margin-bottom:7px}
+.locked-s{font-size:11px;color:var(--p3);max-width:280px;line-height:1.7;margin-bottom:22px}
+.unlock-btn{padding:8px 20px;border:1px solid var(--p3);background:rgba(90,118,132,.08);color:var(--p2);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;border-radius:2px;transition:all .14s}
+.unlock-btn:hover{border-color:var(--p2);background:rgba(146,175,215,.1)}
+
+.reco{padding:12px;border:1px solid var(--border);border-radius:2px;margin-bottom:8px}
+.reco-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.reco-title{font-size:11px;font-weight:600;color:var(--p1)}
+.reco-body{font-size:10px;color:var(--p3);line-height:1.7;margin-bottom:8px}
+.reco-foot{display:flex;align-items:center;gap:8px}
+.reco-lbl{font-size:8px;color:var(--p3);letter-spacing:1px;text-transform:uppercase}
+.reco-track{flex:1;height:2px;background:var(--border);border-radius:1px;max-width:90px}
+.reco-fill{height:100%;border-radius:1px;background:var(--p2)}
+.reco-pct{font-family:'DM Mono',monospace;font-size:9px;color:var(--p2)}
+
+.ctrl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.ctrl-block{background:var(--s3);border:1px solid var(--border);border-radius:3px;padding:14px}
+.ctrl-lbl{font-size:9px;color:var(--p3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:7px}
+.ctrl-sel{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:2px;padding:6px 9px;color:var(--p1);font-family:'DM Sans',sans-serif;font-size:11px;outline:none;cursor:pointer;margin-bottom:10px;transition:border-color .12s}
+.ctrl-sel:focus{border-color:var(--p3)}
+.ctrl-range{width:100%;accent-color:var(--p2);cursor:pointer;margin-bottom:4px}
+.ctrl-val{font-family:'DM Mono',monospace;font-size:11px;color:var(--p2)}
+.ctrl-impact{font-size:22px;font-family:'DM Mono',monospace;color:var(--p1);margin:6px 0}
+.ctrl-impact-sub{font-size:9px;color:var(--p3);line-height:1.65}
+.ctrl-btn{width:100%;padding:7px;background:rgba(90,118,132,.09);border:1px solid var(--p3);color:var(--p2);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;cursor:pointer;border-radius:2px;margin-top:9px;transition:all .14s}
+.ctrl-btn:hover{background:rgba(146,175,215,.1);border-color:var(--p2)}
+
+.sev-row{display:flex;gap:6px;margin-bottom:9px}
+.sev-btn{padding:4px 11px;border-radius:2px;border:1px solid var(--border);background:transparent;font-size:10px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .12s;color:var(--p3)}
+.sev-btn.sc{border-color:rgba(197,209,235,.3);color:var(--p1);background:rgba(197,209,235,.05)}
+.sev-btn.sw{border-color:rgba(146,175,215,.28);color:var(--p2);background:rgba(146,175,215,.05)}
+.sev-btn.si{border-color:rgba(90,118,132,.3);color:var(--p3);background:rgba(90,118,132,.05)}
+.bc-area{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:2px;padding:8px 11px;color:var(--p1);font-family:'DM Sans',sans-serif;font-size:11px;outline:none;resize:vertical;min-height:70px;margin-bottom:8px;transition:border-color .12s}
+.bc-area:focus{border-color:var(--p3)}
+.bc-btn{padding:6px 16px;background:rgba(90,118,132,.09);border:1px solid var(--p3);color:var(--p2);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;cursor:pointer;border-radius:2px;transition:all .14s}
+.bc-btn:hover{border-color:var(--p2);background:rgba(146,175,215,.1)}
+
+.aff-row{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--border)}
+.aff-row:last-child{border-bottom:none}
+.aff-stat{flex:1;min-width:0}
+.aff-name{font-size:11px;font-weight:500;color:var(--p1)}
+.aff-meta{font-size:9px;color:var(--p3);margin-top:1px}
+.aff-res{text-align:center;min-width:36px}
+.aff-rl{font-size:8px;color:var(--p3);letter-spacing:.4px;text-transform:uppercase}
+.aff-rv{font-family:'DM Mono',monospace;font-size:10px;font-weight:500}
+
+/* SOURCES */
+.src-item{display:flex;gap:11px;padding:10px 0;border-bottom:1px solid var(--border)}
+.src-item:last-child{border-bottom:none}
+.src-badge{flex-shrink:0;font-size:8px;padding:2px 5px;border-radius:1px;font-family:'DM Mono',monospace;letter-spacing:.5px;text-transform:uppercase;border:1px solid;height:fit-content;margin-top:2px}
+.sg{color:var(--p2);border-color:rgba(146,175,215,.22);background:rgba(146,175,215,.05)}
+.sr{color:var(--p1);border-color:rgba(197,209,235,.2);background:rgba(197,209,235,.04)}
+.sa{color:var(--p3);border-color:rgba(90,118,132,.26);background:rgba(90,118,132,.05)}
+.src-name{font-size:11px;font-weight:600;color:var(--p1)}
+.src-desc{font-size:10px;color:var(--p3);margin-top:2px;line-height:1.6}
+.src-url{font-size:9px;color:var(--p2);font-family:'DM Mono',monospace;margin-top:3px}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.82);backdrop-filter:blur(6px);z-index:100;display:none;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal-box{background:var(--s2);border:1px solid var(--border2);border-radius:4px;padding:24px;width:310px}
+.modal-t{font-size:14px;font-weight:600;margin-bottom:4px;color:var(--p1)}
+.modal-s{font-size:10px;color:var(--p3);margin-bottom:20px;line-height:1.65}
+.f-lbl{font-size:9px;color:var(--p3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px}
+.f-inp{width:100%;background:var(--s1);border:1px solid var(--border);border-radius:2px;padding:8px 11px;color:var(--p1);font-family:'DM Mono',monospace;font-size:12px;outline:none;transition:border-color .12s;margin-bottom:11px}
+.f-inp:focus{border-color:var(--p2)}
+.modal-btns{display:flex;gap:8px}
+.btn-p{flex:1;padding:8px;background:rgba(146,175,215,.08);border:1px solid var(--p2);color:var(--p2);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;border-radius:2px;transition:all .14s}
+.btn-p:hover{background:rgba(146,175,215,.15)}
+.btn-g{padding:8px 13px;background:transparent;border:1px solid var(--border);color:var(--p3);font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;border-radius:2px;transition:all .12s}
+.btn-g:hover{color:var(--p2);border-color:var(--border2)}
+.f-err{font-size:10px;color:var(--p1);margin-bottom:9px;display:none}
+.modal-hint{margin-top:12px;font-size:9px;color:var(--p3);text-align:center;font-family:'DM Mono',monospace}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--s3);border:1px solid var(--border2);border-left:2px solid var(--p2);border-radius:2px;padding:10px 14px;font-size:11px;color:var(--p2);z-index:200;display:none;max-width:320px;line-height:1.55;animation:tsl .18s ease}
+@keyframes tsl{from{transform:translateX(10px);opacity:0}to{transform:none;opacity:1}}
+</style>
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar">
+  <div class="logo-area">
+    <div class="logo-mark">Rashtra Kavach</div>
+    <div class="logo-sub">National Resource Monitor</div>
+  </div>
+  <nav class="nav">
+    <div class="nav-section">Public</div>
+    <div class="nav-item active" id="n-overview" onclick="go('overview',this)"><span class="nav-dash"></span>Overview</div>
+    <div class="nav-item" id="n-find" onclick="go('find',this)"><span class="nav-dash"></span>Find Resources</div>
+    <div class="nav-item" id="n-alerts" onclick="go('alerts',this)"><span class="nav-dash"></span>Alerts <span class="nav-badge">10</span></div>
+    <div class="nav-section">Data</div>
+    <div class="nav-item" id="n-states" onclick="go('states',this)"><span class="nav-dash"></span>All States</div>
+    <div class="nav-item" id="n-resources" onclick="go('resources',this)"><span class="nav-dash"></span>By Resource</div>
+    <div class="nav-item" id="n-sources" onclick="go('sources',this)"><span class="nav-dash"></span>Data Sources</div>
+    <div class="nav-section">Restricted</div>
+    <div class="nav-item" id="n-gov" onclick="govNav()"><span class="nav-dash"></span>Gov Panel</div>
+  </nav>
+  <div class="sidebar-foot"><span class="live-ring"></span>Live · synced 2m ago</div>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-title">Essential Resource <strong>Supply Command</strong> · India</div>
+    <div class="crisis-tag"><span class="crisis-dot"></span>Crisis Level : High</div>
+    <div class="topbar-date">17 Mar 2026</div>
+    <button class="btn-gov" id="govBtn" onclick="govBtn()">Gov Login</button>
+  </div>
+  <div class="content">
+
+  <!-- OVERVIEW -->
+  <div id="p-overview" class="page active">
+    <div class="ph"><div class="ph-title">National Overview</div><div class="ph-sub">Supply index across all 36 states and union territories — 5 resource categories</div></div>
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-label">States Monitored</div><div class="kpi-num">36</div><div class="kpi-sub">28 States · 8 Union Territories</div></div>
+      <div class="kpi"><div class="kpi-label">Critical States</div><div class="kpi-num">8</div><div class="kpi-sub">Immediate intervention required</div></div>
+      <div class="kpi"><div class="kpi-label">Under Warning</div><div class="kpi-num d2">14</div><div class="kpi-sub">Supply below safe threshold</div></div>
+      <div class="kpi"><div class="kpi-label">Avg Supply Index</div><div class="kpi-num d3">63.2 <span class="kpi-delta">▼ 2.1</span></div><div class="kpi-sub">Composite · 5 resource types</div></div>
+    </div>
+    <div class="g2">
+      <div class="card" style="margin-bottom:0">
+        <div class="card-head">7-Day Supply Trend <div class="chr"></div></div>
+        <div class="ch"><canvas id="ch-trend"></canvas></div>
+        <div style="display:flex;gap:14px;margin-top:10px;flex-wrap:wrap">
+          <span style="font-size:9px;color:var(--p3);font-family:'DM Mono',monospace;display:flex;align-items:center;gap:4px"><span style="width:14px;height:1px;background:var(--p1);display:inline-block;vertical-align:middle"></span>LPG</span>
+          <span style="font-size:9px;color:var(--p3);font-family:'DM Mono',monospace;display:flex;align-items:center;gap:4px"><span style="width:14px;height:1px;background:var(--p2);display:inline-block;vertical-align:middle"></span>Water</span>
+          <span style="font-size:9px;color:var(--p3);font-family:'DM Mono',monospace;display:flex;align-items:center;gap:4px"><span style="width:14px;height:1px;background:var(--p3);display:inline-block;vertical-align:middle"></span>Food</span>
+          <span style="font-size:9px;color:var(--p3);font-family:'DM Mono',monospace;display:flex;align-items:center;gap:4px"><span style="width:14px;height:1px;background:#3a5260;display:inline-block;vertical-align:middle"></span>Fuel</span>
+          <span style="font-size:9px;color:var(--p3);font-family:'DM Mono',monospace;display:flex;align-items:center;gap:4px"><span style="width:14px;height:1px;background:#253040;display:inline-block;vertical-align:middle"></span>Medicine</span>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:0">
+        <div class="card-head">Resource Averages <div class="chr"></div></div>
+        <div class="ch"><canvas id="ch-bar"></canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">State & UT Supply Grid <div class="chr"></div></div>
+      <div class="state-grid" id="state-grid"></div>
+    </div>
+    <div class="card">
+      <div class="card-head">Active Alerts <div class="chr"></div></div>
+      <div id="feed-overview"></div>
+    </div>
+  </div>
+
+  <!-- FIND RESOURCES -->
+  <div id="p-find" class="page">
+    <div class="ph"><div class="ph-title">Find Resources Near You</div><div class="ph-sub">Distribution points, availability, and public action guidance — no login required</div></div>
+    <div class="g2" style="margin-bottom:10px">
+      <div>
+        <div class="card" style="margin-bottom:10px">
+          <div class="card-head">Select Your State <div class="chr"></div></div>
+          <div class="loc-grid" id="loc-state-grid"></div>
+        </div>
+        <div class="card" style="margin-bottom:0">
+          <div class="card-head">Current Status — <span id="sel-sn" style="color:var(--p2)">Uttar Pradesh</span> <div class="chr"></div></div>
+          <div id="state-status-box"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:0;align-self:start">
+        <div class="card-head">Distribution Points — <span id="sel-dp" style="color:var(--p2)">Uttar Pradesh</span> <div class="chr"></div></div>
+        <div id="distrib-box"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">Current Shortage Guidance by Resource <div class="chr"></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div>
+          <div class="tip-block"><div class="tip-res-lbl">LPG</div><div class="tip-text hi">Book immediately via IOCL / Ujjwala app — cylinder availability is projected to tighten in 72 hours across eastern UP, Bihar, and Manipur. Do not wait for existing cylinder to run out.</div></div>
+          <div class="tip-block"><div class="tip-res-lbl">Water</div><div class="tip-text">Reservoir levels in Rajasthan and Bihar are below 40%. Store 3–5 days of drinking water if you are in a flagged district. Municipal tanker schedules are posted at your local ward office.</div></div>
+          <div class="tip-block"><div class="tip-res-lbl">Food Grains</div><div class="tip-text">Ration card holders should collect the full monthly allocation now. FCI depots in Bihar and Jharkhand have 18-day buffer — procurement is underway to restore 30-day minimum.</div></div>
+          <div class="tip-block"><div class="tip-res-lbl">Medicines</div><div class="tip-text">Jan Aushadhi Kendras in Jharkhand tribal belt are reporting low generic drug stocks. Contact your district CMHO office for referrals to alternative dispensaries.</div></div>
+        </div>
+        <div>
+          <div class="plan-step"><div class="plan-num">01</div><div><div class="plan-title">Check your state's supply status</div><div class="plan-text">Use the state selector above. Critical means active shortage; warning means act before it worsens. Check each resource individually — a state may be critical on LPG but stable on food.</div></div></div>
+          <div class="plan-step"><div class="plan-num">02</div><div><div class="plan-title">Locate your nearest distribution point</div><div class="plan-text">LPG: your registered dealer. Water: municipal office or ward tanker schedule. Food: PDS ration shop or FCI depot. Fuel: any OMC outlet. Medicines: Jan Aushadhi Kendra or government hospital pharmacy.</div></div></div>
+          <div class="plan-step"><div class="plan-num">03</div><div><div class="plan-title">Register and book in advance</div><div class="plan-text">LPG: use Umang app, IOCL app, or call 1800-233-3555. Ration: ensure your Aadhaar is linked at the nearest CSC. Water tankers: register via your municipal corporation's portal or their helpline.</div></div></div>
+          <div class="plan-step"><div class="plan-num">04</div><div><div class="plan-title">Conserve — do not hoard</div><div class="plan-text">Panic buying worsens shortages for everyone in your area. Report hoarding or black market pricing to your district supply officer or the NFSA grievance portal at 1967.</div></div></div>
+          <div class="plan-step"><div class="plan-num">05</div><div><div class="plan-title">Stay updated via official channels</div><div class="plan-text">Subscribe to NDMA alerts via Aarogya Setu or SMS 7738299899. This dashboard is updated every 30 minutes from government API sources. Your district collector's office publishes daily supply bulletins.</div></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">National Helplines <div class="chr"></div></div>
+      <div class="helpline-grid">
+        <div class="hl"><div class="hl-lbl">LPG</div><div class="hl-num">1800-233-3555</div><div class="hl-sub">IOCL / BPCL / HPCL</div></div>
+        <div class="hl"><div class="hl-lbl">PDS / Food</div><div class="hl-num">1967</div><div class="hl-sub">NFSA Grievance</div></div>
+        <div class="hl"><div class="hl-lbl">Water</div><div class="hl-num">1916</div><div class="hl-sub">Jal Jeevan Helpline</div></div>
+        <div class="hl"><div class="hl-lbl">Medicines</div><div class="hl-num">1800-11-8008</div><div class="hl-sub">Jan Aushadhi</div></div>
+        <div class="hl"><div class="hl-lbl">Disaster</div><div class="hl-num">1078</div><div class="hl-sub">NDMA Control Room</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ALERTS -->
+  <div id="p-alerts" class="page">
+    <div class="ph"><div class="ph-title">Alert Log</div><div class="ph-sub">All active supply disruption notifications — updated every 5 minutes</div></div>
+    <div class="card" id="feed-full"></div>
+  </div>
+
+  <!-- ALL STATES -->
+  <div id="p-states" class="page">
+    <div class="ph"><div class="ph-title">All States & Union Territories</div><div class="ph-sub">Supply levels across 5 resource categories — click column header to sort</div></div>
+    <div class="fb">
+      <span class="fb-lbl">Region</span>
+      <button class="fb-btn on" onclick="setRg('All',this)">All</button>
+      <button class="fb-btn" onclick="setRg('North',this)">North</button>
+      <button class="fb-btn" onclick="setRg('South',this)">South</button>
+      <button class="fb-btn" onclick="setRg('East',this)">East</button>
+      <button class="fb-btn" onclick="setRg('West',this)">West</button>
+      <button class="fb-btn" onclick="setRg('Central',this)">Central</button>
+      <button class="fb-btn" onclick="setRg('Northeast',this)">Northeast</button>
+      <button class="fb-btn" onclick="setRg('UT',this)">UTs</button>
+      <span class="fb-lbl" style="margin-left:8px">Status</span>
+      <button class="fb-btn on" onclick="setSt('All',this)">All</button>
+      <button class="fb-btn" onclick="setSt('critical',this)">Critical</button>
+      <button class="fb-btn" onclick="setSt('warning',this)">Warning</button>
+      <button class="fb-btn" onclick="setSt('stable',this)">Stable</button>
+    </div>
+    <div class="card"><div class="tbl-wrap"><table><thead><tr>
+      <th onclick="sortBy('name')">State / UT</th>
+      <th onclick="sortBy('region')">Region</th>
+      <th onclick="sortBy('lgp')">LPG</th>
+      <th onclick="sortBy('water')">Water</th>
+      <th onclick="sortBy('food')">Food</th>
+      <th onclick="sortBy('fuel')">Fuel</th>
+      <th onclick="sortBy('medicine')">Medicine</th>
+      <th onclick="sortBy('min')">Lowest</th>
+      <th>Status</th>
+    </tr></thead><tbody id="states-tbody"></tbody></table></div></div>
+  </div>
+
+  <!-- BY RESOURCE -->
+  <div id="p-resources" class="page">
+    <div class="ph"><div class="ph-title">Resource Analysis</div><div class="ph-sub">Per-resource supply breakdown and regional distribution</div></div>
+    <div class="rt">
+      <div class="rt-tab on" onclick="swRes('lgp',this)">LPG</div>
+      <div class="rt-tab" onclick="swRes('water',this)">Water</div>
+      <div class="rt-tab" onclick="swRes('food',this)">Food Grains</div>
+      <div class="rt-tab" onclick="swRes('fuel',this)">Fuel</div>
+      <div class="rt-tab" onclick="swRes('medicine',this)">Medicines</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:10px" id="res-kpis"></div>
+    <div class="g2">
+      <div class="card" style="margin-bottom:0"><div class="card-head" id="res-ch-t">LPG — State Distribution <div class="chr"></div></div><div class="ch-tall"><canvas id="ch-res-bar"></canvas></div></div>
+      <div class="card" style="margin-bottom:0"><div class="card-head">Regional Breakdown <div class="chr"></div></div><div class="ch-tall"><canvas id="ch-region"></canvas></div></div>
+    </div>
+    <div class="card" style="margin-top:10px">
+      <div class="card-head" id="res-tbl-t">States ranked — LPG <div class="chr"></div></div>
+      <div class="tbl-wrap" style="margin-top:10px"><table><thead><tr><th>#</th><th>State / UT</th><th>Region</th><th>Supply</th><th style="width:150px">Distribution</th></tr></thead><tbody id="res-tbody"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- DATA SOURCES -->
+  <div id="p-sources" class="page">
+    <div class="ph"><div class="ph-title">Data Sources</div><div class="ph-sub">Government portals and open APIs used to feed this dashboard</div></div>
+    <div class="g2">
+      <div class="card" style="margin-bottom:0">
+        <div class="card-head">LPG & Petroleum <div class="chr"></div></div>
+        <div class="src-item"><span class="src-badge sg">GOV</span><div><div class="src-name">PPAC — Petroleum Planning & Analysis Cell</div><div class="src-desc">Monthly LPG supply, import data, state consumption. Free reports, data.gov.in API.</div><div class="src-url">ppac.gov.in</div></div></div>
+        <div class="src-item"><span class="src-badge sg">GOV</span><div><div class="src-name">MoPNG Open Data Portal</div><div class="src-desc">OMC-wise LPG connection and distribution data by district. REST JSON API.</div><div class="src-url">data.gov.in (search: LPG)</div></div></div>
+        <div class="src-item"><span class="src-badge sa">API</span><div><div class="src-name">IOCL / BPCL / HPCL Portals</div><div class="src-desc">Distributor-level stock APIs. Requires MOU with respective OMC for live access.</div><div class="src-url">mylpg.in · iocl.com</div></div></div>
+      </div>
+      <div class="card" style="margin-bottom:0">
+        <div class="card-head">Water Resources <div class="chr"></div></div>
+        <div class="src-item"><span class="src-badge sr">LIVE</span><div><div class="src-name">CWC India-WRIS</div><div class="src-desc">Central Water Commission — daily reservoir storage, river gauge data. JSON API.</div><div class="src-url">indiawris.gov.in</div></div></div>
+        <div class="src-item"><span class="src-badge sr">LIVE</span><div><div class="src-name">CWC Weekly Reservoir Bulletin</div><div class="src-desc">Storage position of 150 major reservoirs. Updated every Thursday. Machine-readable.</div><div class="src-url">cwc.gov.in/reservoir-monitoring</div></div></div>
+        <div class="src-item"><span class="src-badge sg">GOV</span><div><div class="src-name">eJalShakti — Jal Jeevan Mission</div><div class="src-desc">State/district drinking water coverage. Updated quarterly by Ministry of Jal Shakti.</div><div class="src-url">ejalshakti.gov.in</div></div></div>
+      </div>
+      <div class="card" style="margin-bottom:0">
+        <div class="card-head">Food Grains <div class="chr"></div></div>
+        <div class="src-item"><span class="src-badge sr">LIVE</span><div><div class="src-name">FCI Stock Position Portal</div><div class="src-desc">Food Corporation of India — weekly rice, wheat, coarse grain stocks by state depot.</div><div class="src-url">fci.gov.in/stocks.php</div></div></div>
+        <div class="src-item"><span class="src-badge sg">GOV</span><div><div class="src-name">ANNAVITRAN / DoFPD</div><div class="src-desc">NFSA allocation vs. actual offtake by state. Dept. of Food & Public Distribution.</div><div class="src-url">dfpd.gov.in · annavitran.nic.in</div></div></div>
+        <div class="src-item"><span class="src-badge sa">API</span><div><div class="src-name">Agmarknet API</div><div class="src-desc">AGMARK mandi prices and arrival data — proxy indicator for local supply pressure.</div><div class="src-url">agmarknet.gov.in</div></div></div>
+      </div>
+      <div class="card" style="margin-bottom:0">
+        <div class="card-head">Supporting Infrastructure <div class="chr"></div></div>
+        <div class="src-item"><span class="src-badge sr">LIVE</span><div><div class="src-name">NDMA Disaster Alert Feed</div><div class="src-desc">Event feeds for floods, cyclones, and route disruptions affecting supply chains.</div><div class="src-url">ndma.gov.in</div></div></div>
+        <div class="src-item"><span class="src-badge sa">API</span><div><div class="src-name">IMD Weather API</div><div class="src-desc">India Meteorological Dept — 5-day forecasts per district for preemptive shortage alerts.</div><div class="src-url">mausam.imd.gov.in</div></div></div>
+        <div class="src-item"><span class="src-badge sg">GOV</span><div><div class="src-name">data.gov.in Master Portal</div><div class="src-desc">500K+ central ministry datasets. Free REST API with registration at data.gov.in.</div><div class="src-url">data.gov.in</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GOV PANEL -->
+  <div id="p-gov" class="page">
+    <div id="gov-locked">
+      <div class="card locked-wrap">
+        <div class="lock-icon"></div>
+        <div class="locked-t">Government Official Access</div>
+        <div class="locked-s">Crisis management tools, AI recommendations, allocation controls, and citizen broadcast. Restricted to NDMA-verified personnel.</div>
+        <button class="unlock-btn" onclick="openModal()">Login with Gov ID</button>
+      </div>
+    </div>
+    <div id="gov-unlocked" style="display:none">
+      <div class="ph"><div class="ph-title">Crisis Management Panel</div><div class="ph-sub">AI-assisted recommendations and allocation controls — verified access</div></div>
+      <div class="card">
+        <div class="card-head">AI Crisis Recommendations <div class="chr"></div></div>
+        <div id="ai-recos"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">Supply Allocation Controls <div class="chr"></div></div>
+        <div class="ctrl-grid">
+          <div class="ctrl-block">
+            <div class="ctrl-lbl">Source State</div>
+            <select class="ctrl-sel" id="src-state"><option value="">Select surplus state...</option></select>
+            <div class="ctrl-lbl">Resource</div>
+            <select class="ctrl-sel" id="src-res"><option>LPG</option><option>Water</option><option>Food Grains</option><option>Fuel</option><option>Medicines</option></select>
+          </div>
+          <div class="ctrl-block">
+            <div class="ctrl-lbl">Destination State</div>
+            <select class="ctrl-sel" id="dst-state"><option value="">Select deficit state...</option></select>
+            <div class="ctrl-lbl">Allocation Volume</div>
+            <input type="range" class="ctrl-range" min="5" max="40" value="15" oninput="document.getElementById('av').textContent=this.value+'%'">
+            <div class="ctrl-val" id="av">15%</div>
+          </div>
+          <div class="ctrl-block">
+            <div class="ctrl-lbl">Projected Impact</div>
+            <div class="ctrl-impact">+8.4%</div>
+            <div class="ctrl-impact-sub">Projected rise in destination supply index within 48 hrs of dispatch confirmation.</div>
+            <button class="ctrl-btn" onclick="toast('Allocation order filed — Ref: RK/2026/0317-04')">File Allocation Order</button>
+          </div>
+        </div>
+      </div>
+      <div class="g2">
+        <div class="card" style="margin-bottom:0">
+          <div class="card-head">Broadcast to Citizens <div class="chr"></div></div>
+          <div class="sev-row">
+            <button class="sev-btn sc" onclick="setSev('c',this)">Critical</button>
+            <button class="sev-btn" onclick="setSev('w',this)">Warning</button>
+            <button class="sev-btn" onclick="setSev('i',this)">Information</button>
+          </div>
+          <textarea class="bc-area" placeholder="Enter alert message for affected states..."></textarea>
+          <button class="bc-btn" onclick="toast('Alert queued for broadcast — IVR, SMS & Aarogya Setu')">Broadcast Alert</button>
+        </div>
+        <div class="card" style="margin-bottom:0">
+          <div class="card-head">Most Affected States <div class="chr"></div></div>
+          <div id="affected-areas"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  </div>
+</main>
+</div>
+
+<div class="modal-bg" id="modal">
+  <div class="modal-box">
+    <div class="modal-t">Government Login</div>
+    <div class="modal-s">NDMA-issued credentials required. Unauthorized access is a criminal offence under IT Act 2000.</div>
+    <div class="f-lbl">Employee ID</div>
+    <input class="f-inp" id="f-id" type="text" placeholder="GOV######" autocomplete="off">
+    <div class="f-lbl">Passphrase</div>
+    <input class="f-inp" id="f-pw" type="password" placeholder="••••••••••">
+    <div class="f-err" id="f-err">Invalid credentials. Contact NDMA IT Cell at 011-26701700.</div>
+    <div class="modal-btns">
+      <button class="btn-g" onclick="closeModal()">Cancel</button>
+      <button class="btn-p" onclick="doLogin()">Authenticate</button>
+    </div>
+    <div class="modal-hint">Demo — ID: GOV2026 · Pass: RASHTRA#1</div>
+  </div>
+</div>
+<div class="toast" id="toast-el"></div>
+
+<script>
+const SR=[
+  ['Andhra Pradesh',    'South',    49.5, 50,71,58,82,69],
+  ['Arunachal Pradesh', 'Northeast', 1.6, 45,72,65,50,68],
+  ['Assam',             'Northeast',31.2, 60,45,70,55,72],
+  ['Bihar',             'East',    104.1, 38,40,55,42,50],
+  ['Chhattisgarh',      'Central',  25.5, 65,62,78,58,70],
+  ['Goa',               'West',      1.5, 88,85,90,82,88],
+  ['Gujarat',           'West',     60.4, 78,70,85,75,80],
+  ['Haryana',           'North',    25.4, 72,68,80,70,75],
+  ['Himachal Pradesh',  'North',     7.1, 80,75,82,72,78],
+  ['Jharkhand',         'East',     33.0, 50,48,62,45,55],
+  ['Karnataka',         'South',    61.1, 75,65,80,70,76],
+  ['Kerala',            'South',    33.4, 82,78,85,80,84],
+  ['Madhya Pradesh',    'Central',  72.6, 58,52,72,55,65],
+  ['Maharashtra',       'West',    112.4, 74,68,80,72,76],
+  ['Manipur',           'Northeast', 2.9, 42,55,60,40,52],
+  ['Meghalaya',         'Northeast', 3.0, 55,62,65,50,58],
+  ['Mizoram',           'Northeast', 1.1, 60,65,62,55,64],
+  ['Nagaland',          'Northeast', 2.0, 50,58,60,48,55],
+  ['Odisha',            'East',     41.9, 62,55,74,58,68],
+  ['Punjab',            'North',    27.7, 76,72,82,74,78],
+  ['Rajasthan',         'North',    68.5, 48,38,65,45,60],
+  ['Sikkim',            'Northeast', 0.6, 85,80,78,76,82],
+  ['Tamil Nadu',        'South',    72.1, 78,70,82,74,80],
+  ['Telangana',         'South',    35.0, 72,65,80,68,74],
+  ['Tripura',           'Northeast', 3.7, 58,60,65,52,62],
+  ['Uttar Pradesh',     'North',   199.8, 42,38,58,40,48],
+  ['Uttarakhand',       'North',    10.1, 70,68,75,65,72],
+  ['West Bengal',       'East',     91.3, 65,58,72,60,68],
+  ['Delhi',             'UT',       16.8, 75,65,78,72,74],
+  ['Jammu & Kashmir',   'UT',       12.5, 60,62,70,55,65],
+  ['Ladakh',            'UT',        0.3, 55,60,62,48,58],
+  ['Puducherry',        'UT',        1.2, 80,75,82,78,80],
+  ['Chandigarh',        'UT',        1.0, 85,80,88,82,86],
+  ['Andaman & Nicobar', 'UT',        0.4, 70,72,68,62,70],
+  ['Dadra & NH / DD',   'UT',        0.6, 72,68,75,68,72],
+  ['Lakshadweep',       'UT',       0.07, 65,70,60,55,65],
+];
+const STATES=SR.map(([name,region,pop,lgp,water,food,fuel,medicine])=>{
+  const min=Math.min(lgp,water,food,fuel,medicine);
+  const avg=Math.round((lgp+water+food+fuel+medicine)/5);
+  const status=min<45?'critical':min<63?'warning':'stable';
+  return{name,region,pop,lgp,water,food,fuel,medicine,min,avg,status};
+});
+const ALERTS=[
+  {t:'09:42',s:'Uttar Pradesh',r:'LPG',l:'critical',m:'Supply dropped below 42%. Shortage affecting 12 districts in Purvanchal belt.'},
+  {t:'09:31',s:'Rajasthan',r:'Water',l:'critical',m:'Reservoir levels at 38% in Jodhpur and Bikaner. 3 districts under acute shortage.'},
+  {t:'09:18',s:'Bihar',r:'LPG',l:'critical',m:'PDS cylinder distribution stalled in Kosi and Seemanchal. Queue times exceeding 4 hrs.'},
+  {t:'08:55',s:'Bihar',r:'Food Grains',l:'warning',m:'FCI buffer at 18 days — below the 30-day minimum benchmark.'},
+  {t:'08:30',s:'Arunachal Pradesh',r:'Fuel',l:'warning',m:'Tawang and West Kameng road closures disrupting supply. Depot fuel at 50%.'},
+  {t:'07:44',s:'Manipur',r:'LPG',l:'critical',m:'NH-37 disruption impacting cylinder distribution. Imphal depots at 42%.'},
+  {t:'07:20',s:'Jharkhand',r:'Medicines',l:'warning',m:'Essential drug availability below 55% across 6 tribal belt districts.'},
+  {t:'06:55',s:'Assam',r:'Water',l:'warning',m:'Brahmaputra flood risk degrading 4 municipal water treatment plants.'},
+  {t:'06:30',s:'Madhya Pradesh',r:'Water',l:'warning',m:'Bundelkhand reservoirs at 52% entering summer season — high-risk period.'},
+  {t:'05:45',s:'Nagaland',r:'Fuel',l:'warning',m:'Dimapur supply depot at 48% due to transport delay from Assam.'},
+];
+const TREND=[
+  {d:'Mon',lgp:68,water:62,food:78,fuel:65,medicine:72},
+  {d:'Tue',lgp:65,water:60,food:76,fuel:62,medicine:70},
+  {d:'Wed',lgp:62,water:58,food:75,fuel:60,medicine:69},
+  {d:'Thu',lgp:60,water:55,food:74,fuel:58,medicine:68},
+  {d:'Fri',lgp:58,water:54,food:73,fuel:57,medicine:67},
+  {d:'Sat',lgp:56,water:52,food:72,fuel:55,medicine:66},
+  {d:'Sun',lgp:55,water:50,food:71,fuel:54,medicine:65},
+];
+const RKEYS=['lgp','water','food','fuel','medicine'];
+const RLBL={lgp:'LPG',water:'Water',food:'Food Grains',fuel:'Fuel',medicine:'Medicines'};
+const DISTRIB={
+  lgp:[{n:'Shri Ram Gas Agency',a:'42, Station Road, Lucknow',v:'yes'},{n:'Bharat Gas Distributor',a:'14, Civil Lines, Varanasi',v:'low'},{n:'HP Gas Service Centre',a:'Gomti Nagar, Lucknow',v:'no'}],
+  water:[{n:'Municipal Water Tanker',a:'LMC Helpline: 0522-2621097',v:'yes'},{n:'Jal Nigam Depot',a:'Indira Nagar, Lucknow',v:'yes'}],
+  food:[{n:'PDS Fair Price Shop',a:'Ward 12, Near Chowk, Lucknow',v:'yes'},{n:'FCI Depot',a:'Amausi, Lucknow',v:'yes'}],
+  fuel:[{n:'IOCL Petrol Pump',a:'Ring Road, Lucknow',v:'yes'},{n:'BPCL Fuel Station',a:'Hazratganj, Lucknow',v:'low'}],
+  medicine:[{n:'Jan Aushadhi Kendra',a:'Alambagh, Lucknow',v:'yes'},{n:'Govt District Hospital Pharmacy',a:'KD Singh Stadium Road',v:'yes'}],
+};
+const AI_RECS=[
+  {p:'critical',s:'Uttar Pradesh',r:'LPG',a:'Redirect 2.4 lakh cylinders from Punjab surplus (76%) via NH-44. Prioritise Varanasi, Gorakhpur, Azamgarh depots. Deploy 380 transport tankers. ETA: 36–48 hrs.',c:87},
+  {p:'critical',s:'Rajasthan',r:'Water',a:'Activate Indira Gandhi Canal Phase-II emergency allocation (800 cusecs). Deploy 120 municipal tankers to Bikaner, Barmer, and Jaisalmer districts.',c:91},
+  {p:'critical',s:'Bihar',r:'LPG',a:'Initiate IOCL emergency uplift of 12,000 cylinders to Patna and Bhagalpur. Coordinate BPCL-HPCL cross-supply from West Bengal buffer. ETA: 28 hrs.',c:83},
+  {p:'warning',s:'Manipur',r:'LPG',a:'Airlift 8,000 cylinders to Imphal airport via IAF coordination. Activate BCPL emergency protocol to restore Jiribam–Imphal route. Partial restoration: 24 hrs.',c:82},
+];
+
+let curPage='overview',fRg='All',fSt='All',sortK='name',sortA=true,curRes='lgp',govIn=false,selState='Uttar Pradesh';
+const charts={};
+
+function vc(v){return v<45?'var(--p1)':v<63?'var(--p2)':'var(--p3)'}
+function bc(v){return v<45?'#C5D1EB':v<63?'#92AFD7':'#5A7684'}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  buildGrid();buildFeed('feed-overview',6);buildFeed('feed-full',ALERTS.length);
+  renderTable();renderResPage();buildLocStates();renderDistrib('Uttar Pradesh');
+  buildRecos();buildAffected();fillGovSel();initCharts();
+});
+
+function buildGrid(){
+  document.getElementById('state-grid').innerHTML=STATES.map(s=>`
+    <div class="sg-cell">
+      <div class="sg-name">${s.name}</div>
+      <div class="sg-row">
+        <div class="sg-val" style="color:${vc(s.avg)}">${s.avg}%</div>
+        ${s.status!=='stable'?`<span style="font-size:8px;color:${vc(s.avg)};font-family:'DM Mono',monospace">${s.status==='critical'?'!':'~'}</span>`:''}
+      </div>
+      <div class="sg-bar"><div class="sg-fill" style="width:${s.avg}%;background:${bc(s.avg)}"></div></div>
+    </div>`).join('');
+}
+
+function buildFeed(id,n){
+  document.getElementById(id).innerHTML=ALERTS.slice(0,n).map(a=>`
+    <div class="al">
+      <div class="al-time">${a.t}</div><div class="al-line"></div>
+      <div class="al-body">
+        <div class="al-head">${a.s}<span class="al-tag ${a.l==='critical'?'tc':'tw'}">${a.l.toUpperCase()}</span><span class="al-tag tr">${a.r}</span></div>
+        <div class="al-msg">${a.m}</div>
+      </div>
+    </div>`).join('');
+}
+
+function renderTable(){
+  let d=[...STATES];
+  if(fRg!=='All') d=d.filter(s=>s.region===fRg);
+  if(fSt!=='All') d=d.filter(s=>s.status===fSt);
+  d.sort((a,b)=>typeof a[sortK]==='string'?(sortA?a[sortK].localeCompare(b[sortK]):b[sortK].localeCompare(a[sortK])):(sortA?a[sortK]-b[sortK]:b[sortK]-a[sortK]));
+  document.getElementById('states-tbody').innerHTML=d.map(s=>`
+    <tr>
+      <td class="td-s">${s.name}</td>
+      <td><span class="td-tag">${s.region}</span></td>
+      <td class="td-m" style="color:${vc(s.lgp)}">${s.lgp}%</td>
+      <td class="td-m" style="color:${vc(s.water)}">${s.water}%</td>
+      <td class="td-m" style="color:${vc(s.food)}">${s.food}%</td>
+      <td class="td-m" style="color:${vc(s.fuel)}">${s.fuel}%</td>
+      <td class="td-m" style="color:${vc(s.medicine)}">${s.medicine}%</td>
+      <td><span class="barcell"><span class="barfill" style="width:${s.min}%;background:${bc(s.min)}"></span></span> <span class="td-m" style="color:${vc(s.min)}">${s.min}%</span></td>
+      <td><span class="td-tag" style="color:${vc(s.min)};border-color:${bc(s.min)}44">${s.status.toUpperCase()}</span></td>
+    </tr>`).join('');
+}
+
+function renderResPage(){
+  const k=curRes,lbl=RLBL[k];
+  const avg=Math.round(STATES.reduce((a,s)=>a+s[k],0)/STATES.length);
+  const crit=STATES.filter(s=>s[k]<45).length;
+  const stbl=STATES.filter(s=>s[k]>=63).length;
+  document.getElementById('res-ch-t').innerHTML=`${lbl} — State Distribution <div class="chr"></div>`;
+  document.getElementById('res-tbl-t').innerHTML=`States ranked — ${lbl} <div class="chr"></div>`;
+  document.getElementById('res-kpis').innerHTML=`
+    <div class="kpi"><div class="kpi-label">National Average</div><div class="kpi-num" style="color:${vc(avg)}">${avg}%</div><div class="kpi-sub">36 states/UTs</div></div>
+    <div class="kpi"><div class="kpi-label">States Critical</div><div class="kpi-num">${crit}</div><div class="kpi-sub">Below 45%</div></div>
+    <div class="kpi"><div class="kpi-label">States Stable</div><div class="kpi-num d2">${stbl}</div><div class="kpi-sub">Above 63%</div></div>`;
+  document.getElementById('res-tbody').innerHTML=[...STATES].sort((a,b)=>a[k]-b[k]).map((s,i)=>`
+    <tr>
+      <td class="td-m" style="color:var(--p3)">${i+1}</td>
+      <td class="td-s">${s.name}</td>
+      <td><span class="td-tag">${s.region}</span></td>
+      <td class="td-m" style="color:${vc(s[k])}">${s[k]}%</td>
+      <td><span class="barcell" style="width:140px"><span class="barfill" style="width:${s[k]}%;background:${bc(s[k])}"></span></span></td>
+    </tr>`).join('');
+  updateResCharts();
+}
+
+function buildLocStates(){
+  document.getElementById('loc-state-grid').innerHTML=STATES.map(s=>`
+    <div class="loc-btn${s.name===selState?' sel':''}" onclick="selLoc('${s.name}',this)">
+      <div class="loc-btn-name">${s.name}</div>
+      <div class="loc-btn-st">${s.avg}% · ${s.status}</div>
+    </div>`).join('');
+}
+
+function selLoc(name,el){
+  selState=name;
+  document.querySelectorAll('.loc-btn').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel');
+  document.getElementById('sel-sn').textContent=name;
+  document.getElementById('sel-dp').textContent=name;
+  renderDistrib(name);
+}
+
+function renderDistrib(name){
+  const s=STATES.find(x=>x.name===name);
+  if(s){
+    document.getElementById('state-status-box').innerHTML=RKEYS.map(k=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
+        <div style="width:78px;font-size:10px;font-weight:500;color:var(--p2)">${RLBL[k]}</div>
+        <div style="flex:1"><div style="height:2px;background:var(--border);border-radius:1px;overflow:hidden"><div style="height:100%;width:${s[k]}%;background:${bc(s[k])};border-radius:1px"></div></div></div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:${vc(s[k])};width:34px;text-align:right">${s[k]}%</div>
+        <div style="font-size:8px;font-family:'DM Mono',monospace;color:${vc(s[k])};width:52px;text-align:right;letter-spacing:.4px">${s[k]<45?'CRITICAL':s[k]<63?'WARNING':'STABLE'}</div>
+      </div>`).join('')+`<div style="padding-top:7px;font-size:9px;color:var(--p3)">Avg index: <span style="color:var(--p2);font-family:'DM Mono',monospace">${s.avg}%</span> · Pop: ${s.pop}M</div>`;
+  }
+  document.getElementById('distrib-box').innerHTML=Object.entries(DISTRIB).map(([res,pts])=>`
+    <div style="margin-bottom:13px">
+      <div style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--p3);margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid var(--border)">${RLBL[res]}</div>
+      ${pts.map(p=>`
+        <div class="dp-item">
+          <div><div class="dp-name">${p.n}</div><div class="dp-addr">${p.a}</div></div>
+          <span class="dp-avail ${p.v==='yes'?'avail-yes':p.v==='low'?'avail-low':'avail-no'}">${p.v==='yes'?'IN STOCK':p.v==='low'?'LOW':'EMPTY'}</span>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+function buildRecos(){
+  document.getElementById('ai-recos').innerHTML=AI_RECS.map(r=>`
+    <div class="reco">
+      <div class="reco-top"><span class="al-tag ${r.p==='critical'?'tc':'tw'}">${r.p.toUpperCase()}</span><span class="reco-title">${r.s} — ${r.r}</span></div>
+      <div class="reco-body">${r.a}</div>
+      <div class="reco-foot"><span class="reco-lbl">AI Confidence</span><div class="reco-track"><div class="reco-fill" style="width:${r.c}%"></div></div><span class="reco-pct">${r.c}%</span></div>
+    </div>`).join('');
+}
+
+function buildAffected(){
+  document.getElementById('affected-areas').innerHTML=STATES.filter(s=>s.status==='critical').sort((a,b)=>a.min-b.min).map(s=>`
+    <div class="aff-row">
+      <div class="aff-stat"><div class="aff-name">${s.name}</div><div class="aff-meta">${s.region} · ${s.pop}M</div></div>
+      ${RKEYS.map(k=>`<div class="aff-res"><div class="aff-rl">${k.substring(0,3)}</div><div class="aff-rv" style="color:${vc(s[k])}">${s[k]}%</div></div>`).join('')}
+    </div>`).join('');
+}
+
+function fillGovSel(){
+  const surplus=STATES.filter(s=>s.status==='stable').sort((a,b)=>a.name.localeCompare(b.name));
+  const deficit=STATES.filter(s=>s.status!=='stable').sort((a,b)=>a.min-b.min);
+  const src=document.getElementById('src-state'),dst=document.getElementById('dst-state');
+  surplus.forEach(s=>src.innerHTML+=`<option>${s.name} (avg ${s.avg}%)</option>`);
+  deficit.forEach(s=>dst.innerHTML+=`<option>${s.name} (min ${s.min}%)</option>`);
+}
+
+function initCharts(){
+  const gC='rgba(28,28,28,.9)',tF={family:'DM Mono',size:8},tC='#5A7684';
+  const base={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}};
+  charts.trend=new Chart(document.getElementById('ch-trend'),{type:'line',data:{labels:TREND.map(d=>d.d),datasets:[
+    {data:TREND.map(d=>d.lgp),borderColor:'#C5D1EB',borderWidth:1.5,pointRadius:0,tension:.4},
+    {data:TREND.map(d=>d.water),borderColor:'#92AFD7',borderWidth:1.5,pointRadius:0,tension:.4},
+    {data:TREND.map(d=>d.food),borderColor:'#5A7684',borderWidth:1.5,pointRadius:0,tension:.4},
+    {data:TREND.map(d=>d.fuel),borderColor:'#3a5260',borderWidth:1.5,pointRadius:0,tension:.4},
+    {data:TREND.map(d=>d.medicine),borderColor:'#253040',borderWidth:1.5,pointRadius:0,tension:.4},
+  ]},options:{...base,scales:{x:{grid:{color:gC},ticks:{color:tC,font:tF}},y:{min:40,max:90,grid:{color:gC},ticks:{color:tC,font:tF,callback:v=>v+'%'}}}}});
+
+  const ravg=RKEYS.map(k=>Math.round(STATES.reduce((a,s)=>a+s[k],0)/STATES.length));
+  charts.bar=new Chart(document.getElementById('ch-bar'),{type:'bar',data:{labels:['LPG','Water','Food','Fuel','Med.'],datasets:[{data:ravg,backgroundColor:ravg.map(v=>v<45?'rgba(197,209,235,.15)':v<63?'rgba(146,175,215,.15)':'rgba(90,118,132,.15)'),borderColor:ravg.map(v=>bc(v)),borderWidth:1,borderRadius:2}]},options:{...base,scales:{x:{grid:{display:false},ticks:{color:tC,font:tF}},y:{min:0,max:100,grid:{color:gC},ticks:{color:tC,font:tF,callback:v=>v+'%'}}}}});
+
+  charts.resBar=new Chart(document.getElementById('ch-res-bar'),{type:'bar',data:{labels:[],datasets:[{data:[],backgroundColor:[],borderColor:[],borderWidth:1,borderRadius:2}]},options:{...base,indexAxis:'y',scales:{x:{min:0,max:100,grid:{color:gC},ticks:{color:tC,font:{...tF,size:7},callback:v=>v+'%'}},y:{grid:{display:false},ticks:{color:'#92AFD7',font:{size:8}}}}}});
+
+  charts.region=new Chart(document.getElementById('ch-region'),{type:'radar',data:{labels:[],datasets:[]},options:{...base,plugins:{legend:{display:true,labels:{color:tC,font:{size:8},boxWidth:9}}},scales:{r:{min:0,max:100,grid:{color:'rgba(28,28,28,.9)'},angleLines:{color:'rgba(28,28,28,.9)'},pointLabels:{color:'#5A7684',font:{size:8}},ticks:{color:tC,font:{size:7},backdropColor:'transparent',stepSize:25}}}}});
+  updateResCharts();
+}
+
+function updateResCharts(){
+  if(!charts.resBar) return;
+  const k=curRes;
+  const sorted=[...STATES].sort((a,b)=>b[k]-a[k]);
+  charts.resBar.data.labels=sorted.map(s=>s.name.length>16?s.name.substring(0,16)+'…':s.name);
+  const vals=sorted.map(s=>s[k]);
+  charts.resBar.data.datasets[0].data=vals;
+  charts.resBar.data.datasets[0].backgroundColor=vals.map(v=>v<45?'rgba(197,209,235,.14)':v<63?'rgba(146,175,215,.14)':'rgba(90,118,132,.14)');
+  charts.resBar.data.datasets[0].borderColor=vals.map(v=>bc(v));
+  charts.resBar.update('none');
+  const regions=['North','South','East','West','Central','Northeast'];
+  const rC=['#C5D1EB','#92AFD7','#5A7684','#7A9BB0','#3a5260','#253040'];
+  charts.region.data.labels=RKEYS.map(k=>RLBL[k]);
+  charts.region.data.datasets=regions.map((r,i)=>({label:r,data:RKEYS.map(k=>{const ss=STATES.filter(s=>s.region===r);return ss.length?Math.round(ss.reduce((a,s)=>a+s[k],0)/ss.length):0;}),borderColor:rC[i],backgroundColor:'transparent',borderWidth:1.5,pointRadius:2}));
+  charts.region.update('none');
+}
+
+function go(pg,el){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));document.getElementById('p-'+pg).classList.add('active');if(el)el.classList.add('active');curPage=pg;}
+function govNav(){govIn?go('gov',document.getElementById('n-gov')):openModal();}
+function govBtn(){
+  if(govIn){govIn=false;document.getElementById('govBtn').classList.remove('on');document.getElementById('govBtn').textContent='Gov Login';document.getElementById('gov-locked').style.display='block';document.getElementById('gov-unlocked').style.display='none';if(curPage==='gov')go('overview',document.getElementById('n-overview'));}
+  else openModal();
+}
+function setRg(v,el){fRg=v;el.closest('.fb').querySelectorAll('[onclick*="setRg"]').forEach(b=>b.classList.remove('on'));el.classList.add('on');renderTable();}
+function setSt(v,el){fSt=v;el.closest('.fb').querySelectorAll('[onclick*="setSt"]').forEach(b=>b.classList.remove('on'));el.classList.add('on');renderTable();}
+function sortBy(k){if(sortK===k)sortA=!sortA;else{sortK=k;sortA=true;}renderTable();}
+function swRes(k,el){curRes=k;document.querySelectorAll('.rt-tab').forEach(t=>t.classList.remove('on'));el.classList.add('on');renderResPage();}
+function openModal(){document.getElementById('modal').classList.add('open');}
+function closeModal(){document.getElementById('modal').classList.remove('open');document.getElementById('f-err').style.display='none';}
+function doLogin(){
+  if(document.getElementById('f-id').value.trim()==='GOV2026'&&document.getElementById('f-pw').value==='RASHTRA#1'){
+    govIn=true;closeModal();document.getElementById('govBtn').classList.add('on');document.getElementById('govBtn').textContent='GOV · Logout';
+    document.getElementById('gov-locked').style.display='none';document.getElementById('gov-unlocked').style.display='block';
+    go('gov',document.getElementById('n-gov'));
+  }else{document.getElementById('f-err').style.display='block';}
+}
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('modal').classList.contains('open'))doLogin();if(e.key==='Escape')closeModal();});
+function setSev(t,el){document.querySelectorAll('.sev-btn').forEach(b=>b.className='sev-btn');el.classList.add('s'+t);}
+let tT;
+function toast(msg){const el=document.getElementById('toast-el');el.textContent=msg;el.style.display='block';clearTimeout(tT);tT=setTimeout(()=>el.style.display='none',4500);}
+</script>
+</body>
+</html>
